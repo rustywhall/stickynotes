@@ -34,5 +34,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 console.error("No active tab found");
             }
         });
+    } else if (message.action === "notify") {
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon48.png',
+            title: message.title,
+            message: message.message
+        });
     }
 });

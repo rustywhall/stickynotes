@@ -12,7 +12,7 @@ if (!window.__stickyNotesInjected) {
             note.style.position = 'absolute';
             note.style.background = 'yellow';
             note.style.padding = '10px';
-            note.style.border = '1px solid black';
+            note.style.border = '2px solid black'; // Increase border width
             note.style.zIndex = '10000';
             note.style.resize = 'none'; // Disable default resizing
             note.style.overflow = 'auto';
@@ -169,9 +169,16 @@ if (!window.__stickyNotesInjected) {
             }
             chrome.storage.local.get('notes', (data) => {
                 console.log("Loading notes", data);
-                if (data.notes) {
+                if (data.notes && data.notes.length > 0) {
                     data.notes.forEach(noteData => {
                         createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height);
+                    });
+                } else {
+                    // Notify the user that there are no notes to load
+                    chrome.runtime.sendMessage({
+                        action: 'notify',
+                        title: 'Sticky Notes',
+                        message: 'There are no notes to load.'
                     });
                 }
                 notesLoaded = true; // Set the flag to true after loading notes
