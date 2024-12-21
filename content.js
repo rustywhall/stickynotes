@@ -27,6 +27,16 @@ if (!window.__stickyNotesInjected) {
             note.style.paddingTop = '30px'; // Adjust padding to make space for the close button
             note.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'; // Add shadow style
 
+            // Create header
+            const header = document.createElement('div');
+            header.style.position = 'absolute';
+            header.style.top = '5px';
+            header.style.left = '10px';
+            header.style.fontWeight = 'bold';
+            header.style.fontSize = '12px';
+            header.style.color = 'black';
+            note.appendChild(header);
+
             // Create content-editable area
             const content = document.createElement('div');
             content.contentEditable = true;
@@ -63,6 +73,7 @@ if (!window.__stickyNotesInjected) {
             closeButton.addEventListener('click', function() {
                 note.remove();
                 saveNotes(); // Save notes after removing
+                updateNoteHeaders(); // Update headers after removing
             });
 
             note.appendChild(closeButton);
@@ -141,23 +152,38 @@ if (!window.__stickyNotesInjected) {
             selection.removeAllRanges();
             selection.addRange(range);
             content.focus(); // Ensure the content is focused and cursor is blinking
+
+            updateNoteHeaders(); // Update headers after adding a new note
+        }
+
+        function updateNoteHeaders() {
+            const notes = document.querySelectorAll('div[contenteditable=true]');
+            notes.forEach((content, index) => {
+                const note = content.parentElement;
+                const header = note.querySelector('div');
+                header.innerHTML = `Note ${index + 1} of ${notes.length}`;
+            });
         }
 
         function saveNotes() {
             const notes = [];
+            const pageWidth = document.documentElement.scrollWidth;
+            const pageHeight = document.documentElement.scrollHeight;
             document.querySelectorAll('div[contenteditable=true]').forEach(content => {
                 const note = content.parentElement;
                 if (content.innerHTML.trim() !== '') { // Only save notes with text
+                    const left = (parseInt(note.style.left) / pageWidth) * 100;
+                    const top = (parseInt(note.style.top) / pageHeight) * 100;
                     notes.push({
                         text: content.innerHTML,
-                        left: note.style.left,
-                        top: note.style.top,
+                        left: `${left}%`,
+                        top: `${top}%`,
                         width: note.style.width,
                         height: note.style.height
                     });
                 }
             });
-            chrome.storage.local.set({ notes: notes }, () => {
+            chrome.storage.sync.set({ notes: notes }, () => {
                 console.log("Notes saved", notes);
             });
         }
@@ -167,18 +193,12 @@ if (!window.__stickyNotesInjected) {
                 console.log("Notes already loaded, skipping load.");
                 return;
             }
-            chrome.storage.local.get('notes', (data) => {
+            chrome.storage.sync.get('notes', (data) => {
                 console.log("Loading notes", data);
                 if (data.notes && data.notes.length > 0) {
-                    data.notes.forEach(noteData => {
-                        createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height);
-                    });
-                } else {
-                    // Notify the user that there are no notes to load
-                    chrome.runtime.sendMessage({
-                        action: 'notify',
-                        title: 'Sticky Notes',
-                        message: 'There are no notes to load.'
+                    const totalNotes = data.notes.length;
+                    data.notes.forEach((noteData, index) => {
+                        createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, totalNotes);
                     });
                 }
                 notesLoaded = true; // Set the flag to true after loading notes
