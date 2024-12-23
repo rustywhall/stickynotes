@@ -6,7 +6,7 @@ if (!window.__stickyNotesInjected) {
     (() => {
         let notesLoaded = false; // Encapsulated in its own scope
 
-        function createNote(text = '', left = '100px', top = '100px', width = '200px', height = '200px') {
+        function createNote(text = '', left = '100px', top = '100px', width = '200px', height = '200px', noteIndex = 1, totalNotes = 1) {
             console.log("Creating note with text:", text);
             const note = document.createElement('div');
             note.style.position = 'absolute';
@@ -29,12 +29,14 @@ if (!window.__stickyNotesInjected) {
 
             // Create header
             const header = document.createElement('div');
+            header.innerHTML = `Note ${noteIndex} of ${totalNotes}`;
             header.style.position = 'absolute';
             header.style.top = '5px';
             header.style.left = '10px';
             header.style.fontWeight = 'bold';
             header.style.fontSize = '12px';
             header.style.color = 'black';
+
             note.appendChild(header);
 
             // Create content-editable area
@@ -154,6 +156,101 @@ if (!window.__stickyNotesInjected) {
             content.focus(); // Ensure the content is focused and cursor is blinking
 
             updateNoteHeaders(); // Update headers after adding a new note
+
+            // Create index arrow
+            const indexArrow = document.createElement('div');
+            indexArrow.innerHTML = '→';
+            indexArrow.style.position = 'absolute';
+            indexArrow.style.top = '5px';
+            indexArrow.style.right = '30px';
+            indexArrow.style.cursor = 'pointer';
+            indexArrow.style.fontSize = '14px';
+            indexArrow.style.color = 'black';
+            indexArrow.style.fontWeight = 'bold';
+
+            indexArrow.addEventListener('click', function() {
+                showIndex(note);
+            });
+
+            note.appendChild(indexArrow);
+        }
+
+        function showIndex(note) {
+            const indexPanel = document.createElement('div');
+            indexPanel.style.position = 'absolute';
+            indexPanel.style.top = note.offsetTop + 'px';
+            indexPanel.style.left = (note.offsetLeft + note.offsetWidth + 10) + 'px'; // Position to the right of the note
+            indexPanel.style.width = '300px'; // Increase width
+            indexPanel.style.height = note.offsetHeight + 'px'; // Match the height of the note
+            indexPanel.style.background = 'black';
+            indexPanel.style.color = 'white';
+            indexPanel.style.padding = '10px';
+            indexPanel.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            indexPanel.style.transition = 'opacity 0.3s ease-in-out';
+            indexPanel.style.zIndex = '10001';
+            indexPanel.style.fontSize = '10px'; // Smaller font size
+            indexPanel.style.opacity = '0';
+
+            const title = document.createElement('div');
+            title.innerHTML = 'Index of domain notes';
+            title.style.fontWeight = 'bold';
+            title.style.marginBottom = '10px';
+            indexPanel.appendChild(title);
+
+            const currentUrl = window.location.href;
+            const truncatedUrl = currentUrl.length > 30 ? currentUrl.substring(0, 30) + '...' : currentUrl;
+
+            const urlHeader = document.createElement('div');
+            urlHeader.innerHTML = truncatedUrl;
+            urlHeader.title = currentUrl;
+            urlHeader.style.fontWeight = 'bold';
+            urlHeader.style.marginBottom = '10px';
+
+            indexPanel.appendChild(urlHeader);
+
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = 'X';
+            closeButton.style.position = 'absolute';
+            closeButton.style.top = '5px';
+            closeButton.style.right = '5px';
+            closeButton.style.background = 'none';
+            closeButton.style.color = 'white';
+            closeButton.style.border = 'none';
+            closeButton.style.fontWeight = 'bold';
+            closeButton.style.cursor = 'pointer';
+
+            closeButton.addEventListener('click', function() {
+                indexPanel.style.opacity = '0';
+                setTimeout(() => indexPanel.remove(), 300);
+            });
+
+            indexPanel.appendChild(closeButton);
+
+            chrome.storage.sync.get('notes', (data) => {
+                if (data.notes && data.notes.length > 0) {
+                    const relatedNotes = data.notes.filter(noteData => noteData.url.startsWith(currentUrl));
+                    relatedNotes.forEach((noteData, index) => {
+                        const noteLink = document.createElement('div');
+                        const noteText = noteData.text.length > 10 ? noteData.text.substring(0, 10) + '...' : noteData.text;
+                        noteLink.innerHTML = `Note ${index + 1} of ${relatedNotes.length}: ${noteText}`;
+                        noteLink.style.cursor = 'pointer';
+                        noteLink.style.marginBottom = '5px';
+
+                        noteLink.addEventListener('click', function() {
+                            window.scrollTo({
+                                top: (parseFloat(noteData.top) / 100) * document.documentElement.scrollHeight,
+                                left: (parseFloat(noteData.left) / 100) * document.documentElement.scrollWidth,
+                                behavior: 'smooth'
+                            });
+                        });
+
+                        indexPanel.appendChild(noteLink);
+                    });
+                }
+            });
+
+            document.body.appendChild(indexPanel);
+            setTimeout(() => indexPanel.style.opacity = '1', 0); // Fade in the index panel
         }
 
         function updateNoteHeaders() {
@@ -169,6 +266,7 @@ if (!window.__stickyNotesInjected) {
             const notes = [];
             const pageWidth = document.documentElement.scrollWidth;
             const pageHeight = document.documentElement.scrollHeight;
+            const currentUrl = window.location.href;
             document.querySelectorAll('div[contenteditable=true]').forEach(content => {
                 const note = content.parentElement;
                 if (content.innerHTML.trim() !== '') { // Only save notes with text
@@ -179,7 +277,8 @@ if (!window.__stickyNotesInjected) {
                         left: `${left}%`,
                         top: `${top}%`,
                         width: note.style.width,
-                        height: note.style.height
+                        height: note.style.height,
+                        url: currentUrl
                     });
                 }
             });
@@ -193,12 +292,15 @@ if (!window.__stickyNotesInjected) {
                 console.log("Notes already loaded, skipping load.");
                 return;
             }
+            const currentUrl = window.location.href;
             chrome.storage.sync.get('notes', (data) => {
                 console.log("Loading notes", data);
                 if (data.notes && data.notes.length > 0) {
                     const totalNotes = data.notes.length;
                     data.notes.forEach((noteData, index) => {
-                        createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, totalNotes);
+                        if (noteData.url.startsWith(currentUrl)) {
+                            createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, totalNotes);
+                        }
                     });
                 }
                 notesLoaded = true; // Set the flag to true after loading notes
