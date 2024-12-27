@@ -5,26 +5,31 @@
     "description": "Add sticky notes to any webpage",
     "permissions": ["activeTab", "storage", "scripting"],
     "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "icon16.png",
-        "48": "icon48.png",
-        "128": "icon128.png"
-      }
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
     },
     "content_scripts": [
-      {
-        "matches": ["<all_urls>"],
-        "js": ["content.js"]
-      }
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"]
+        }
     ],
     "background": {
-      "service_worker": "background.js"
+        "service_worker": "background.js"
     },
     "web_accessible_resources": [
-      {
-        "resources": ["content.js"],
-        "matches": ["<all_urls>"]
-      }
-    ]
+        {
+            "resources": ["content.js"],
+            "matches": ["<all_urls>"]
+        }
+    ],
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    }
 }
