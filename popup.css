@@ -1,0 +1,47 @@
+/* filepath: /c:/Users/rusty/Desktop/stickynotes/popup.css */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 20px;
+    width: 400px; /* Twice as large */
+    height: 300px; /* Twice as large */
+    box-sizing: border-box;
+}
+
+.container {
+    text-align: center;
+}
+
+.icon {
+    width: 48px;
+    height: 48px;
+}
+
+h1 {
+    font-size: 24px;
+    color: #333;
+    margin: 10px 0;
+}
+
+p {
+    font-size: 16px;
+    color: #666;
+    margin: 10px 0 20px;
+}
+
+button {
+    display: block;
+    width: 80%; /* Wider buttons */
+    margin: 10px auto; /* Spacing between buttons */
+    padding: 15px; /* Twice as large */
+    font-size: 16px; /* Twice as large */
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px; /* Rounded corners */
+}
+
+button:hover {
+    background-color: #0056b3;
+}
