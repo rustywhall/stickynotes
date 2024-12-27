@@ -5,6 +5,7 @@ if (!window.__stickyNotesInjected) {
 
     (() => {
         let notesLoaded = false; // Encapsulated in its own scope
+        let indexPanel = null; // Store the index panel globally
 
         function createNote(text = '', left = '100px', top = '100px', width = '200px', height = '200px', noteIndex = 1, totalNotes = 1) {
             console.log("Creating note with text:", text);
@@ -76,6 +77,10 @@ if (!window.__stickyNotesInjected) {
                 note.remove();
                 saveNotes(); // Save notes after removing
                 updateNoteHeaders(); // Update headers after removing
+                if (indexPanel) {
+                    indexPanel.remove();
+                    indexPanel = null;
+                }
             });
 
             note.appendChild(closeButton);
@@ -101,6 +106,9 @@ if (!window.__stickyNotesInjected) {
                 function doDrag(e) {
                     note.style.width = (startWidth + e.clientX - startX) + 'px';
                     note.style.height = (startHeight + e.clientY - startY) + 'px';
+                    if (indexPanel) {
+                        indexPanel.style.height = note.offsetHeight + 'px';
+                    }
                 }
 
                 function stopDrag() {
@@ -124,6 +132,10 @@ if (!window.__stickyNotesInjected) {
                 function move(e) {
                     note.style.left = (e.clientX - startX) + 'px';
                     note.style.top = (e.clientY - startY) + 'px';
+                    if (indexPanel) {
+                        indexPanel.style.top = note.offsetTop + 'px';
+                        indexPanel.style.left = (note.offsetLeft + note.offsetWidth + 10) + 'px';
+                    }
                 }
 
                 document.addEventListener('mousemove', move);
@@ -176,7 +188,10 @@ if (!window.__stickyNotesInjected) {
         }
 
         function showIndex(note) {
-            const indexPanel = document.createElement('div');
+            if (indexPanel) {
+                indexPanel.remove();
+            }
+            indexPanel = document.createElement('div');
             indexPanel.style.position = 'absolute';
             indexPanel.style.top = note.offsetTop + 'px';
             indexPanel.style.left = (note.offsetLeft + note.offsetWidth + 10) + 'px'; // Position to the right of the note
@@ -220,8 +235,10 @@ if (!window.__stickyNotesInjected) {
             closeButton.style.cursor = 'pointer';
 
             closeButton.addEventListener('click', function() {
+                const panelToRemove = indexPanel;
                 indexPanel.style.opacity = '0';
-                setTimeout(() => indexPanel.remove(), 300);
+                setTimeout(() => panelToRemove.remove(), 300);
+                indexPanel = null;
             });
 
             indexPanel.appendChild(closeButton);
