@@ -17,8 +17,8 @@ if (!window.__stickyNotesInjected) {
             note.style.zIndex = '10000';
             note.style.resize = 'none'; // Disable default resizing
             note.style.overflow = 'auto';
-            note.style.left = `${window.scrollX + 10}px`; // Adjust position relative to current scroll
-            note.style.top = `${window.scrollY + 10}px`; // Adjust position relative to current scroll
+            note.style.left = left; // Initial position
+            note.style.top = top;
             note.style.width = width; // Initial width
             note.style.height = height; // Initial height
             note.style.fontFamily = 'Roboto, sans-serif';
@@ -311,9 +311,21 @@ if (!window.__stickyNotesInjected) {
                 }
             });
 
-            chrome.storage.sync.set({ notes: notes }, () => {
-                console.log("Notes saved", notes);
-            });
+            try {
+                chrome.storage.sync.set({ notes: notes }, () => {
+                    console.log("Notes saved", notes);
+                    updateShareableLink(notes); // Update the shareable link with the notes data
+                });
+            } catch (error) {
+                console.error("Error saving notes:", error);
+            }
+        }
+
+        function updateShareableLink(notes) {
+            const encodedNotes = encodeURIComponent(JSON.stringify(notes));
+            const shareableLink = `${window.location.origin}${window.location.pathname}?notes=${encodedNotes}`;
+            console.log("Shareable link:", shareableLink);
+            // You can display this link in the UI or copy it to the clipboard
         }
 
         function loadNotes() {
@@ -321,19 +333,60 @@ if (!window.__stickyNotesInjected) {
                 console.log("Notes already loaded, skipping load.");
                 return;
             }
+
             const currentUrl = window.location.href;
-            chrome.storage.sync.get('notes', (data) => {
-                console.log("Loading notes", data);
-                if (data.notes && data.notes.length > 0) {
-                    const totalNotes = data.notes.length;
-                    data.notes.forEach((noteData, index) => {
-                        if (noteData.url.startsWith(currentUrl)) {
-                            createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, totalNotes);
-                        }
+            const urlParams = new URLSearchParams(window.location.search);
+            const notesParam = urlParams.get('notes');
+
+            console.log("Current URL:", currentUrl);
+            console.log("Full query parameters:", window.location.search);
+            console.log("Extracted notes parameter:", notesParam);
+
+            if (notesParam) {
+                try {
+                    console.log("Raw notes parameter from URL:", notesParam);
+
+                    // Check if decoding is necessary
+                    if (!/%[0-9A-F]{2}/i.test(notesParam)) {
+                        console.log("Notes parameter appears already decoded. Parsing directly...");
+                        const notes = JSON.parse(notesParam);
+                        notes.forEach((noteData, index) => {
+                            createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, notes.length);
+                        });
+                        notesLoaded = true;
+                        return;
+                    }
+
+                    // Decode if necessary
+                    let decodedNotesParam = decodeURIComponent(notesParam);
+                    console.log("Decoded notes parameter:", decodedNotesParam);
+
+                    const notes = JSON.parse(decodedNotesParam);
+                    console.log("Parsed notes from decoded parameter:", notes);
+
+                    notes.forEach((noteData, index) => {
+                        createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, notes.length);
                     });
+                    notesLoaded = true;
+                } catch (error) {
+                    console.error("Error decoding or parsing notes parameter:", error);
                 }
-                notesLoaded = true; // Set the flag to true after loading notes
-            });
+            } else {
+                console.log("No notes parameter found in URL. Checking storage...");
+                chrome.storage.sync.get('notes', (data) => {
+                    if (data.notes && data.notes.length > 0) {
+                        const totalNotes = data.notes.length;
+                        data.notes.forEach((noteData, index) => {
+                            if (noteData.url.startsWith(currentUrl)) {
+                                createNote(noteData.text, noteData.left, noteData.top, noteData.width, noteData.height, index + 1, totalNotes);
+                            }
+                        });
+                    } else {
+                        console.log("No notes found in storage.");
+                    }
+                    notesLoaded = true;
+                });
+            }
         }
 
         // Load Roboto font if not already loaded
@@ -345,15 +398,20 @@ if (!window.__stickyNotesInjected) {
         }
 
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            console.log("Message received in content script:", request);
+            console.log("Received message in content script:", request);
+
             if (request.action === "addNote") {
                 createNote();
                 sendResponse({ status: "note_added" });
             } else if (request.action === "loadNotes") {
                 loadNotes();
                 sendResponse({ status: "notes_loaded" });
+            } else {
+                console.warn("Unhandled action:", request.action);
+                sendResponse({ status: "unknown_action" });
             }
-            return true; // Keep the message channel open for asynchronous responses
+
+            return true; // Ensure asynchronous response handling
         });
 
         // Signal readiness to the background script
