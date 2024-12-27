@@ -17,8 +17,8 @@ if (!window.__stickyNotesInjected) {
             note.style.zIndex = '10000';
             note.style.resize = 'none'; // Disable default resizing
             note.style.overflow = 'auto';
-            note.style.left = left; // Initial position
-            note.style.top = top;
+            note.style.left = `${window.scrollX + 10}px`; // Adjust position relative to current scroll
+            note.style.top = `${window.scrollY + 10}px`; // Adjust position relative to current scroll
             note.style.width = width; // Initial width
             note.style.height = height; // Initial height
             note.style.fontFamily = 'Roboto, sans-serif';
@@ -213,13 +213,15 @@ if (!window.__stickyNotesInjected) {
             indexPanel.appendChild(title);
 
             const currentUrl = window.location.href;
-            const truncatedUrl = currentUrl.length > 30 ? currentUrl.substring(0, 30) + '...' : currentUrl;
 
             const urlHeader = document.createElement('div');
-            urlHeader.innerHTML = truncatedUrl;
+            urlHeader.innerHTML = currentUrl; // Display full URL
             urlHeader.title = currentUrl;
             urlHeader.style.fontWeight = 'bold';
             urlHeader.style.marginBottom = '10px';
+            urlHeader.style.whiteSpace = 'nowrap'; // Ensure text is on one line
+            urlHeader.style.overflow = 'hidden';
+            urlHeader.style.textOverflow = 'ellipsis';
 
             indexPanel.appendChild(urlHeader);
 
@@ -248,10 +250,13 @@ if (!window.__stickyNotesInjected) {
                     const relatedNotes = data.notes.filter(noteData => noteData.url.startsWith(currentUrl));
                     relatedNotes.forEach((noteData, index) => {
                         const noteLink = document.createElement('div');
-                        const noteText = noteData.text.length > 10 ? noteData.text.substring(0, 10) + '...' : noteData.text;
+                        const noteText = noteData.text.length > 30 ? noteData.text.substring(0, 30) + '...' : noteData.text; // Display more of the note text
                         noteLink.innerHTML = `Note ${index + 1} of ${relatedNotes.length}: ${noteText}`;
                         noteLink.style.cursor = 'pointer';
                         noteLink.style.marginBottom = '5px';
+                        noteLink.style.whiteSpace = 'nowrap'; // Ensure text is on one line
+                        noteLink.style.overflow = 'hidden';
+                        noteLink.style.textOverflow = 'ellipsis';
 
                         noteLink.addEventListener('click', function() {
                             window.scrollTo({
@@ -284,8 +289,14 @@ if (!window.__stickyNotesInjected) {
             const pageWidth = document.documentElement.scrollWidth;
             const pageHeight = document.documentElement.scrollHeight;
             const currentUrl = window.location.href;
+
             document.querySelectorAll('div[contenteditable=true]').forEach(content => {
                 const note = content.parentElement;
+
+                // Ensure height and width are set; fallback to default values
+                const height = note.style.height || '200px';
+                const width = note.style.width || '200px';
+
                 if (content.innerHTML.trim() !== '') { // Only save notes with text
                     const left = (parseInt(note.style.left) / pageWidth) * 100;
                     const top = (parseInt(note.style.top) / pageHeight) * 100;
@@ -293,12 +304,13 @@ if (!window.__stickyNotesInjected) {
                         text: content.innerHTML,
                         left: `${left}%`,
                         top: `${top}%`,
-                        width: note.style.width,
-                        height: note.style.height,
+                        width: width,
+                        height: height,
                         url: currentUrl
                     });
                 }
             });
+
             chrome.storage.sync.set({ notes: notes }, () => {
                 console.log("Notes saved", notes);
             });
