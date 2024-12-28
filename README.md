@@ -6,7 +6,7 @@ Sticky Notes is a Chrome extension that allows you to add, load, and share stick
 
 - **Add Note**: Create a new sticky note on the current webpage.
 - **Load Notes**: Load previously saved sticky notes for the current webpage.
-- **Share Notes**: Generate a shareable URL that includes all sticky notes on the current webpage and copy it to the clipboard.
+- **Share Notes**: Generate a shareable URL that includes all sticky notes on the current webpage and copy it to the clipboard. Send it to a friend or coworker and the notes will appear where you set them after they click to load notes from the extension.
 
 ## Installation
 
