@@ -325,7 +325,7 @@ if (!window.__stickyNotesInjected) {
             const encodedNotes = encodeURIComponent(JSON.stringify(notes));
             const shareableLink = `${window.location.origin}${window.location.pathname}?notes=${encodedNotes}`;
             console.log("Shareable link:", shareableLink);
-            // You can display this link in the UI or copy it to the clipboard
+            return shareableLink;
         }
 
         function loadNotes() {
@@ -389,12 +389,31 @@ if (!window.__stickyNotesInjected) {
             }
         }
 
-        // Load Roboto font if not already loaded
-        if (!document.querySelector('link[href="https://fonts.googleapis.com/css2?family=Roboto:wght@400&display=swap"]')) {
-            const link = document.createElement('link');
-            link.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400&display=swap';
-            link.rel = 'stylesheet';
-            document.head.appendChild(link);
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.innerText = message;
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = 'black';
+            toast.style.color = 'white';
+            toast.style.padding = '10px';
+            toast.style.borderRadius = '5px';
+            toast.style.zIndex = '10000';
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
         }
 
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -406,6 +425,37 @@ if (!window.__stickyNotesInjected) {
             } else if (request.action === "loadNotes") {
                 loadNotes();
                 sendResponse({ status: "notes_loaded" });
+            } else if (request.action === "shareNotes") {
+                const notes = [];
+                const pageWidth = document.documentElement.scrollWidth;
+                const pageHeight = document.documentElement.scrollHeight;
+                const currentUrl = window.location.href;
+
+                document.querySelectorAll('div[contenteditable=true]').forEach(content => {
+                    const note = content.parentElement;
+
+                    // Ensure height and width are set; fallback to default values
+                    const height = note.style.height || '200px';
+                    const width = note.style.width || '200px';
+
+                    if (content.innerHTML.trim() !== '') { // Only save notes with text
+                        const left = (parseInt(note.style.left) / pageWidth) * 100;
+                        const top = (parseInt(note.style.top) / pageHeight) * 100;
+                        notes.push({
+                            text: content.innerHTML,
+                            left: `${left}%`,
+                            top: `${top}%`,
+                            width: width,
+                            height: height,
+                            url: currentUrl
+                        });
+                    }
+                });
+
+                const shareableLink = updateShareableLink(notes);
+                copyToClipboard(shareableLink);
+                showToast("Notes copied to clipboard");
+                sendResponse({ status: "notes_shared" });
             } else {
                 console.warn("Unhandled action:", request.action);
                 sendResponse({ status: "unknown_action" });
